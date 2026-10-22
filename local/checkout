@@ -50,6 +50,19 @@ pushd $ROOT_DIR
         fi
     fi
 
-    # update to the pinned revisions
-    git submodule update --init
+    # update to the pinned revisions; GitHub sometimes refuses anonymous
+    # clones when many builds start at once, so retry after a random delay
+    SUBMODULE_RETRIES=5
+    for i in $(seq 1 ${SUBMODULE_RETRIES}); do
+        if git submodule update --init; then
+            break
+        fi
+        if [ "${i}" -eq "${SUBMODULE_RETRIES}" ]; then
+            echo "git submodule update failed after ${SUBMODULE_RETRIES} attempts"
+            exit 1
+        fi
+        delay=$((30 + RANDOM % 60))
+        echo "git submodule update failed (attempt ${i}/${SUBMODULE_RETRIES}), retrying in ${delay}s..."
+        sleep ${delay}
+    done
 popd
